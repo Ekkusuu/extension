@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Notes Settings</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            width: 300px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f8f9fa;
+            min-height: 180px;
+        }
+
+        .container {
+            padding: 16px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .header h1 {
+            color: #1d2125;
+            font-size: 15px;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .header p {
+            color: #6c757d;
+            font-size: 11px;
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #1d2125;
+            font-size: 12px;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 12px;
+            background: #ffffff;
+            transition: all 0.15s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #0f6cbf;
+            box-shadow: 0 0 0 2px rgba(15, 108, 191, 0.25);
+        }
+
+        .form-group .hint {
+            font-size: 10px;
+            color: #6c757d;
+            margin-top: 4px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .btn-primary {
+            background: #0f6cbf;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0a5a9e;
+        }
+
+        .status {
+            margin-top: 10px;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            text-align: center;
+            display: none;
+        }
+
+        .status.success {
+            display: block;
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            display: block;
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .current-key {
+            margin-top: 8px;
+            padding: 6px;
+            background: #e9ecef;
+            border-radius: 4px;
+            color: #6c757d;
+            font-size: 10px;
+            text-align: center;
+        }
+
+        .current-key.set {
+            color: #155724;
+            background: #d4edda;
+        }
+
+        .help-text {
+            margin-top: 12px;
+            padding: 10px;
+            background: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            color: #6c757d;
+            font-size: 10px;
+            line-height: 1.5;
+        }
+
+        .help-text a {
+            color: #0f6cbf;
+            text-decoration: none;
+        }
+
+        .help-text a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 Quick Notes Settings</h1>
+            <p>Configure cloud sync for your notes</p>
+        </div>
+
+        <div class="form-group">
+            <label for="apiKey">Cloud Sync Key</label>
+            <input type="password" id="apiKey" placeholder="Enter your sync key...">
+            <div class="hint">This key enables cloud backup for your notes</div>
+        </div>
+
+        <button class="btn btn-primary" id="saveBtn">Save Settings</button>
+
+        <div class="status" id="status"></div>
+
+        <div class="current-key" id="currentKey">
+            No sync key configured
+        </div>
+
+        <div class="help-text">
+            <strong>How to get your sync key:</strong><br>
+            1. Visit <a href="https://aistudio.google.com/apikey" target="_blank">Google Cloud Console</a><br>
+            2. Sign in with your account<br>
+            3. Create a new sync key<br>
+            4. Copy and paste it here
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>

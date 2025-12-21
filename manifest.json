@@ -1,0 +1,32 @@
+{
+  "manifest_version": 2,
+  "name": "Quick Notes - Study Helper",
+  "version": "1.0",
+  "description": "A simple clipboard and note-taking extension for studying",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "*://else.fcim.utm.md/*"
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "quick-notes-helper@study.tools"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://else.fcim.utm.md/*"],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_end"
+    }
+  ],
+  "browser_action": {
+    "default_popup": "popup.html",
+    "default_title": "Quick Notes Settings"
+  },
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": false
+  }
+}
