@@ -45,6 +45,8 @@
                 <option value="openrouter">OpenRouter</option>
                 <option value="grok">Grok (xAI)</option>
             </select>
+            <label for="ai-model-select" style="margin-top:8px">Model</label>
+            <select id="ai-model-select" class="ai-settings-select"></select>
             <label for="ai-sync-key" style="margin-top:8px">API Key</label>
             <input type="password" id="ai-sync-key" placeholder="Enter API key...">
             <div class="settings-hint">Key for the selected AI provider</div>
@@ -92,6 +94,61 @@
     let currentImageMimeType = null;
     let currentProvider = 'gemini';
 
+    // Available models per provider
+    const PROVIDER_MODELS = {
+        gemini: [
+            { value: 'gemini-3.1-pro-preview',  label: 'Gemini 3.1 Pro Preview (latest)' },
+            { value: 'gemini-3-flash-preview',   label: 'Gemini 3 Flash Preview' },
+            { value: 'gemini-2.5-pro',           label: 'Gemini 2.5 Pro (stable)' },
+            { value: 'gemini-2.5-flash',         label: 'Gemini 2.5 Flash (stable)' },
+            { value: 'gemini-2.5-flash-lite',    label: 'Gemini 2.5 Flash-Lite' },
+        ],
+        openai: [
+            { value: 'gpt-5.2',       label: 'GPT-5.2 (latest)' },
+            { value: 'gpt-5.2-pro',   label: 'GPT-5.2 Pro' },
+            { value: 'gpt-5-mini',    label: 'GPT-5 Mini' },
+            { value: 'gpt-5-nano',    label: 'GPT-5 Nano' },
+            { value: 'gpt-4.1',       label: 'GPT-4.1' },
+            { value: 'gpt-4o',        label: 'GPT-4o' },
+        ],
+        anthropic: [
+            { value: 'claude-opus-4-6',            label: 'Claude Opus 4.6 (latest)' },
+            { value: 'claude-sonnet-4-6',          label: 'Claude Sonnet 4.6' },
+            { value: 'claude-haiku-4-5-20251001',  label: 'Claude Haiku 4.5' },
+        ],
+        openrouter: [
+            { value: 'google/gemini-3.1-pro-preview',           label: 'Gemini 3.1 Pro Preview' },
+            { value: 'openai/gpt-5.2',                          label: 'GPT-5.2' },
+            { value: 'anthropic/claude-opus-4-6',               label: 'Claude Opus 4.6' },
+            { value: 'anthropic/claude-sonnet-4-6',             label: 'Claude Sonnet 4.6' },
+            { value: 'qwen/qwen3.5-122b-a10b',                  label: 'Qwen 3.5 122B' },
+            { value: 'meta-llama/llama-3.3-70b-instruct',       label: 'Llama 3.3 70B' },
+            { value: 'deepseek/deepseek-r1',                    label: 'DeepSeek R1' },
+        ],
+        grok: [
+            { value: 'grok-4-fast-reasoning',  label: 'Grok 4 Fast Reasoning (latest)' },
+            { value: 'grok-4',                  label: 'Grok 4' },
+            { value: 'grok-3',                  label: 'Grok 3' },
+            { value: 'grok-3-mini',             label: 'Grok 3 Mini' },
+        ],
+    };
+
+    // Populate model dropdown for given provider, optionally pre-selecting savedModel
+    function populateModels(provider, savedModel) {
+        const modelSelect = document.getElementById('ai-model-select');
+        modelSelect.innerHTML = '';
+        const models = PROVIDER_MODELS[provider] || [];
+        models.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.value;
+            opt.textContent = m.label;
+            modelSelect.appendChild(opt);
+        });
+        if (savedModel && models.some(m => m.value === savedModel)) {
+            modelSelect.value = savedModel;
+        }
+    }
+
     // Toggle chatbox
     function toggleChatbox() {
         isOpen = !isOpen;
@@ -112,12 +169,117 @@
         document.getElementById('ai-settings-panel').classList.toggle('open', settingsOpen);
     }
 
+    // Lightweight Markdown → HTML renderer
+    // KaTeX is pre-injected by the manifest before content.js — just wrap in a resolved promise
+    let katexReady = null;
+    function loadKaTeX() {
+        if (!katexReady) katexReady = Promise.resolve();
+        return katexReady;
+    }
+
+    // Render KaTeX placeholders inside an element
+    function renderMath(el) {
+        loadKaTeX().then(() => {
+            if (!window.katex) return;
+            el.querySelectorAll('.ai-math-display').forEach(span => {
+                try {
+                    katex.render(span.dataset.latex, span, { displayMode: true, throwOnError: false });
+                } catch(e) { span.textContent = span.dataset.latex; }
+            });
+            el.querySelectorAll('.ai-math-inline').forEach(span => {
+                try {
+                    katex.render(span.dataset.latex, span, { displayMode: false, throwOnError: false });
+                } catch(e) { span.textContent = span.dataset.latex; }
+            });
+        });
+    }
+
+    function parseMarkdown(text) {
+        const escape = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+        // Stash math blocks BEFORE any escaping so backslashes/braces survive
+        const mathStore = [];
+        const stash = (latex, display) => {
+            const idx = mathStore.length;
+            mathStore.push({ latex, display });
+            return `\x00MATH${idx}\x00`;
+        };
+
+        // Display math: \[...\]
+        text = text.replace(/\\\[([\s\S]*?)\\\]/g, (_, latex) => stash(latex.trim(), true));
+        // Inline math: \(...\)
+        text = text.replace(/\\\(([\s\S]*?)\\\)/g, (_, latex) => stash(latex.trim(), false));
+        // Also handle $...$ inline (but not $$)
+        text = text.replace(/(?<!\$)\$(?!\$)([^$\n]+?)\$/g, (_, latex) => stash(latex.trim(), false));
+        // And $$...$$
+        text = text.replace(/\$\$([\s\S]*?)\$\$/g, (_, latex) => stash(latex.trim(), true));
+
+        // Fenced code blocks
+        text = text.replace(/```([\s\S]*?)```/g, (_, code) =>
+            `<pre><code>${escape(code.trim())}</code></pre>`);
+
+        // Inline code
+        text = text.replace(/`([^`]+)`/g, (_, code) =>
+            `<code>${escape(code)}</code>`);
+
+        // Headers
+        text = text.replace(/^#{3}\s+(.+)$/gm, '<h3>$1</h3>');
+        text = text.replace(/^#{2}\s+(.+)$/gm, '<h2>$1</h2>');
+        text = text.replace(/^#{1}\s+(.+)$/gm, '<h1>$1</h1>');
+
+        // Bold + italic
+        text = text.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+        text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+        // Horizontal rule
+        text = text.replace(/^---$/gm, '<hr>');
+
+        // Unordered lists
+        text = text.replace(/((?:^[\-\*]\s.+\n?)+)/gm, match => {
+            const items = match.trim().split('\n').map(l => `<li>${l.replace(/^[\-\*]\s/, '')}</li>`).join('');
+            return `<ul>${items}</ul>`;
+        });
+
+        // Ordered lists
+        text = text.replace(/((?:^\d+\.\s.+\n?)+)/gm, match => {
+            const items = match.trim().split('\n').map(l => `<li>${l.replace(/^\d+\.\s/, '')}</li>`).join('');
+            return `<ol>${items}</ol>`;
+        });
+
+        // Paragraphs
+        text = text.replace(/^(?!<[hup]|<ol|<pre|<hr|<li|<\/)(.*\S.*)$/gm, '<p>$1</p>');
+
+        // Line breaks
+        text = text.replace(/(?<!>)\n(?!<)/g, '<br>');
+
+        // Restore math as KaTeX placeholder spans
+        text = text.replace(/\x00MATH(\d+)\x00/g, (_, i) => {
+            const { latex, display } = mathStore[+i];
+            const cls = display ? 'ai-math-display' : 'ai-math-inline';
+            const escaped = latex.replace(/"/g, '&quot;');
+            return `<span class="${cls}" data-latex="${escaped}"></span>`;
+        });
+
+        return text;
+    }
+
     // Add message to chat
     function addMessage(text, isUser = false) {
         const messagesContainer = chatbox.querySelector('.ai-chatbox-messages');
         const messageDiv = document.createElement('div');
         messageDiv.className = `ai-message ${isUser ? 'ai-user' : 'ai-assistant'}`;
-        messageDiv.innerHTML = `<p>${escapeHtml(text)}</p>`;
+        if (isUser) {
+            const p = document.createElement('p');
+            p.textContent = text;
+            messageDiv.appendChild(p);
+        } else {
+            const bubble = document.createElement('div');
+            bubble.className = 'ai-markdown';
+            bubble.innerHTML = parseMarkdown(text);
+            messageDiv.appendChild(bubble);
+            renderMath(bubble);
+        }
         messagesContainer.appendChild(messageDiv);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
@@ -195,22 +357,23 @@
         dropzone.querySelector('.ai-dropzone-content').style.display = 'flex';
     }
 
-    // Get API key and provider from storage
+    // Get API key, provider and model from storage
     async function getApiKey() {
         return new Promise((resolve) => {
-            browser.storage.local.get(['geminiApiKey', 'apiProvider'], (result) => {
+            browser.storage.local.get(['geminiApiKey', 'apiProvider', 'apiModel'], (result) => {
                 resolve({
                     key: result.geminiApiKey || null,
-                    provider: result.apiProvider || 'gemini'
+                    provider: result.apiProvider || 'gemini',
+                    model: result.apiModel || null
                 });
             });
         });
     }
 
-    // Save API key and provider
-    async function saveApiKey(key, provider) {
+    // Save API key, provider and model
+    async function saveApiKey(key, provider, model) {
         return new Promise((resolve) => {
-            browser.storage.local.set({ geminiApiKey: key, apiProvider: provider }, () => {
+            browser.storage.local.set({ geminiApiKey: key, apiProvider: provider, apiModel: model }, () => {
                 currentProvider = provider;
                 resolve();
             });
@@ -218,12 +381,13 @@
     }
 
     // Build request body based on provider
-    function buildRequestBody(provider, text, imageBase64, imageMimeType) {
-        const instruction = 'IMPORTANT: Respond with ONLY the correct answer. No explanation, no reasoning, no additional text. Just the answer itself (letter, number, word, or short phrase).';
+    function buildRequestBody(provider, model, text, imageBase64, imageMimeType) {
+        const instruction = 'You are a helpful AI assistant. Respond using Markdown formatting where appropriate: use **bold**, *italic*, `inline code`, ```code blocks```, bullet lists, numbered lists, and headers. For short factual answers (a letter, number, or single word) just reply directly without extra markup.';
 
         let userText = text ? 'Question: ' + text : 'What is the correct answer to this question shown in the image?';
 
         if (provider === 'gemini') {
+            const modelId = model || 'gemini-3.1-pro-preview';
             const parts = [];
             parts.push({ text: instruction });
             if (imageBase64 && imageMimeType) {
@@ -231,12 +395,13 @@
             }
             parts.push({ text: userText });
             return {
+                _geminiModel: modelId,
                 contents: [{ parts: parts }],
                 generationConfig: { temperature: 0.1, topK: 1, topP: 0.8, maxOutputTokens: 2048 }
             };
         }
 
-        if (provider === 'openai' || provider === 'openrouter' || provider === 'grok') {
+        if (provider === 'openai' || provider === 'openrouter') {
             const messages = [
                 { role: 'system', content: instruction }
             ];
@@ -247,19 +412,34 @@
             userContent.push({ type: 'text', text: userText });
             messages.push({ role: 'user', content: userContent });
 
-            const body = {
+            const defaultModel = provider === 'openai' ? 'gpt-5.2' : 'google/gemini-3.1-pro-preview';
+            return {
+                model: model || defaultModel,
                 messages: messages,
                 temperature: 0.1,
                 max_tokens: 2048
             };
-            if (provider === 'openai') {
-                body.model = 'gpt-4o';
-            } else if (provider === 'grok') {
-                body.model = 'grok-3';
-            } else {
-                body.model = 'openai/gpt-4o';
+        }
+
+        if (provider === 'grok') {
+            const selectedModel = model || 'grok-4-fast-reasoning';
+            const messages = [
+                { role: 'system', content: instruction }
+            ];
+            const userContent = [];
+            if (imageBase64 && imageMimeType) {
+                userContent.push({ type: 'image_url', image_url: { url: `data:${imageMimeType};base64,${imageBase64}` } });
             }
-            return body;
+            userContent.push({ type: 'text', text: userText });
+            messages.push({ role: 'user', content: userContent });
+
+            return {
+                model: selectedModel,
+                messages: messages,
+                stream: false,
+                temperature: 0,
+                max_tokens: 2048
+            };
         }
 
         if (provider === 'anthropic') {
@@ -269,7 +449,7 @@
             }
             userContent.push({ type: 'text', text: userText });
             return {
-                model: 'claude-sonnet-4-20250514',
+                model: model || 'claude-sonnet-4-6',
                 max_tokens: 2048,
                 system: instruction,
                 messages: [{ role: 'user', content: userContent }]
@@ -281,12 +461,12 @@
 
     // Send request to selected AI provider
     async function sendToAI(text, imageBase64 = null, imageMimeType = null) {
-        const { key: apiKey, provider } = await getApiKey();
+        const { key: apiKey, provider, model } = await getApiKey();
         if (!apiKey) {
             throw new Error('API key not configured. Click ⚙️ to set up.');
         }
 
-        const requestBody = buildRequestBody(provider, text, imageBase64, imageMimeType);
+        const requestBody = buildRequestBody(provider, model, text, imageBase64, imageMimeType);
 
         // Send request through background script to avoid CORS
         return new Promise((resolve, reject) => {
@@ -343,16 +523,16 @@
         }
     }
 
-    // Load saved API key and provider into settings
+    // Load saved API key, provider and model into settings
     async function loadSettings() {
-        const { key, provider } = await getApiKey();
+        const { key, provider, model } = await getApiKey();
         if (key) {
             document.getElementById('ai-sync-key').value = key;
         }
-        if (provider) {
-            currentProvider = provider;
-            document.getElementById('ai-provider-select').value = provider;
-        }
+        const resolvedProvider = provider || 'gemini';
+        currentProvider = resolvedProvider;
+        document.getElementById('ai-provider-select').value = resolvedProvider;
+        populateModels(resolvedProvider, model);
     }
 
     // Event listeners
@@ -362,13 +542,21 @@
     
     document.getElementById('ai-settings-toggle').addEventListener('click', toggleSettings);
     
+    // Repopulate models when provider changes
+    document.getElementById('ai-provider-select').addEventListener('change', () => {
+        const provider = document.getElementById('ai-provider-select').value;
+        populateModels(provider, null);
+    });
+    
     document.getElementById('ai-save-settings').addEventListener('click', async () => {
         const keyInput = document.getElementById('ai-sync-key');
         const providerSelect = document.getElementById('ai-provider-select');
+        const modelSelect = document.getElementById('ai-model-select');
         const key = keyInput.value.trim();
         const provider = providerSelect.value;
+        const model = modelSelect.value;
         if (key) {
-            await saveApiKey(key, provider);
+            await saveApiKey(key, provider, model);
             updateStatus('Settings saved!');
             toggleSettings();
         } else {
@@ -442,6 +630,7 @@
 
     // Load settings on init
     loadSettings();
+    loadKaTeX(); // pre-load KaTeX so math renders instantly on first message
 
     console.log('Quick Notes: Initialized');
 })();

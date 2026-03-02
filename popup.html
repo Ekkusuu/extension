@@ -253,18 +253,18 @@
 
         <div class="clipboard-history">
             <div class="clipboard-item active">
-                <span class="item-label">Sync token:</span>
-                <span class="item-text" id="currentKey">Not configured</span>
+                <span class="item-label">Last saved:</span>
+                <span class="item-text" id="currentKey">Nothing saved yet</span>
             </div>
         </div>
 
         <div class="form-group">
-            <label for="apiKey">Sync Token</label>
-            <input type="password" id="apiKey" placeholder="Paste sync token...">
-            <div class="hint">Token used for cross-device clipboard sync</div>
+            <label for="apiKey">Add to Clipboard</label>
+            <input type="text" id="apiKey" placeholder="Paste or type text to save..." autocomplete="off">
+            <div class="hint">Text is saved locally to your clipboard history</div>
         </div>
 
-        <button class="btn btn-primary" id="saveBtn">Save Token</button>
+        <button class="btn btn-primary" id="saveBtn">Save to Clipboard</button>
 
         <div class="status" id="status"></div>
 
@@ -285,6 +285,13 @@
                 </select>
                 <div class="hint">Determines how clipboard data is synced</div>
             </div>
+            <div class="form-group">
+                <label for="syncKey">Sync token</label>
+                <input type="password" id="syncKey" placeholder="Enter sync token..." autocomplete="off">
+                <div class="hint">Required for cross-device sync</div>
+            </div>
+            <button class="btn btn-primary" id="saveSyncBtn" style="margin-top:4px">Save Sync Settings</button>
+            <div class="status" id="syncStatus" style="margin-top:6px"></div>
         </div>
     </div>
 

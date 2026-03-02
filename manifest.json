@@ -13,6 +13,11 @@
     "*://openrouter.ai/*",
     "*://api.x.ai/*"
   ],
+  "web_accessible_resources": [
+    "katex/katex.min.js",
+    "katex/katex.min.css",
+    "katex/fonts/*.woff2"
+  ],
   "browser_specific_settings": {
     "gecko": {
       "id": "clipboard-manager@tools.browser"
@@ -21,8 +26,8 @@
   "content_scripts": [
     {
       "matches": ["*://else.fcim.utm.md/*"],
-      "js": ["content.js"],
-      "css": ["styles.css"],
+      "js": ["katex/katex.min.js", "content.js"],
+      "css": ["styles.css", "katex/katex.min.css"],
       "run_at": "document_end"
     }
   ],

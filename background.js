@@ -12,12 +12,16 @@ browser.runtime.onInstalled.addListener(function(details) {
 // --- Provider-specific API handlers ---
 
 function callGemini(apiKey, requestBody) {
+    const model = requestBody._geminiModel || 'gemini-3.1-pro-preview';
+    const body = Object.assign({}, requestBody);
+    delete body._geminiModel;
+
     return fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
         {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody)
+            body: JSON.stringify(body)
         }
     )
     .then(response => {

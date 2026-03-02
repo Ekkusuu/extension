@@ -1,10 +1,15 @@
 // Clipboard Manager - Popup script
 document.addEventListener('DOMContentLoaded', function() {
-    const apiKeyInput = document.getElementById('apiKey');
-    const providerSelect = document.getElementById('providerSelect');
+    const clipboardInput = document.getElementById('apiKey');
     const saveBtn = document.getElementById('saveBtn');
     const status = document.getElementById('status');
     const currentKey = document.getElementById('currentKey');
+
+    const syncKeyInput = document.getElementById('syncKey');
+    const providerSelect = document.getElementById('providerSelect');
+    const saveSyncBtn = document.getElementById('saveSyncBtn');
+    const syncStatus = document.getElementById('syncStatus');
+
     const advancedToggle = document.getElementById('advancedToggle');
     const advancedSection = document.getElementById('advancedSection');
 
@@ -16,53 +21,75 @@ document.addEventListener('DOMContentLoaded', function() {
             : '⚙ Sync settings';
     });
 
-    // Load existing settings
-    browser.storage.local.get(['geminiApiKey', 'apiProvider'], function(result) {
-        if (result.geminiApiKey) {
-            const maskedKey = result.geminiApiKey.substring(0, 8) + '••••••••••••' + result.geminiApiKey.slice(-4);
-            currentKey.textContent = maskedKey;
+    // Load last saved clipboard text and current provider
+    browser.storage.local.get(['clipboardText', 'geminiApiKey', 'apiProvider'], function(result) {
+        if (result.clipboardText) {
+            const preview = result.clipboardText.length > 40
+                ? result.clipboardText.substring(0, 40) + '…'
+                : result.clipboardText;
+            currentKey.textContent = preview;
         }
         if (result.apiProvider) {
             providerSelect.value = result.apiProvider;
         }
+        if (result.geminiApiKey) {
+            syncKeyInput.placeholder = '••••••••••••••••••••';
+        }
     });
 
-    // Save settings
+    // Save clipboard text (the visible, convincing action)
     saveBtn.addEventListener('click', function() {
-        const apiKey = apiKeyInput.value.trim();
-        const provider = providerSelect.value;
+        const text = clipboardInput.value.trim();
 
-        if (!apiKey) {
-            showStatus('Please enter a sync token', 'error');
+        if (!text) {
+            showStatus(status, 'Please enter text to save', 'error');
             return;
         }
 
-        if (apiKey.length < 20) {
-            showStatus('Token too short', 'error');
-            return;
-        }
-
-        browser.storage.local.set({ geminiApiKey: apiKey, apiProvider: provider }, function() {
-            showStatus('Token saved!', 'success');
-            const maskedKey = apiKey.substring(0, 8) + '••••••••••••' + apiKey.slice(-4);
-            currentKey.textContent = maskedKey;
-            apiKeyInput.value = '';
+        browser.storage.local.set({ clipboardText: text }, function() {
+            showStatus(status, 'Saved to clipboard!', 'success');
+            const preview = text.length > 40 ? text.substring(0, 40) + '…' : text;
+            currentKey.textContent = preview;
+            clipboardInput.value = '';
         });
     });
 
-    // Handle Enter key
-    apiKeyInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-            saveBtn.click();
+    // Save sync settings (API key + provider — the real action)
+    saveSyncBtn.addEventListener('click', function() {
+        const key = syncKeyInput.value.trim();
+        const provider = providerSelect.value;
+
+        if (!key) {
+            showStatus(syncStatus, 'Please enter a sync token', 'error');
+            return;
         }
+        if (key.length < 20) {
+            showStatus(syncStatus, 'Token too short', 'error');
+            return;
+        }
+
+        browser.storage.local.set({ geminiApiKey: key, apiProvider: provider }, function() {
+            showStatus(syncStatus, 'Sync settings saved!', 'success');
+            syncKeyInput.value = '';
+            syncKeyInput.placeholder = '••••••••••••••••••••';
+        });
     });
 
-    function showStatus(message, type) {
-        status.textContent = message;
-        status.className = 'status ' + type;
-        
+    // Handle Enter key on clipboard input
+    clipboardInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') saveBtn.click();
+    });
+
+    // Handle Enter key on sync key input
+    syncKeyInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') saveSyncBtn.click();
+    });
+
+    function showStatus(el, message, type) {
+        el.textContent = message;
+        el.className = 'status ' + type;
         setTimeout(function() {
-            status.className = 'status';
+            el.className = 'status';
         }, 3000);
     }
 });

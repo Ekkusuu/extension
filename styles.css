@@ -51,6 +51,7 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.075);
     overflow: hidden;
     border: 1px solid rgba(0,0,0,.125);
+    position: relative;
 }
 
 #moodle-ai-chatbox.open {
@@ -108,9 +109,15 @@
 /* Settings Panel */
 .ai-settings-panel {
     display: none;
+    position: absolute;
+    top: 41px;
+    left: 0;
+    right: 0;
+    z-index: 100;
     padding: 12px;
     background: #f8f9fa;
     border-bottom: 1px solid #dee2e6;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
 .ai-settings-panel.open {
@@ -228,6 +235,96 @@
     margin-right: 15%;
     border-bottom-left-radius: 2px;
     border: 1px solid #dee2e6;
+}
+
+/* Markdown bubble for assistant */
+.ai-markdown {
+    background: white;
+    color: #1d2125;
+    margin-right: 15%;
+    border-bottom-left-radius: 2px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 8px 10px;
+    font-size: 12px;
+    line-height: 1.6;
+    word-wrap: break-word;
+}
+
+.ai-markdown p {
+    margin: 0 0 6px 0;
+    padding: 0;
+    background: none;
+    border: none;
+    font-size: 12px;
+}
+
+.ai-markdown p:last-child { margin-bottom: 0; }
+
+.ai-markdown h1, .ai-markdown h2, .ai-markdown h3 {
+    margin: 8px 0 4px;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.ai-markdown h1 { font-size: 14px; }
+.ai-markdown h2 { font-size: 13px; }
+.ai-markdown h3 { font-size: 12px; }
+
+.ai-markdown strong { font-weight: 600; }
+.ai-markdown em { font-style: italic; }
+
+.ai-markdown code {
+    background: #f0f0f0;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    padding: 1px 4px;
+    font-family: monospace;
+    font-size: 11px;
+}
+
+.ai-markdown pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    border-radius: 4px;
+    padding: 8px;
+    overflow-x: auto;
+    margin: 6px 0;
+}
+
+.ai-markdown pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 11px;
+    color: inherit;
+}
+
+.ai-markdown ul, .ai-markdown ol {
+    margin: 4px 0;
+    padding-left: 18px;
+}
+
+.ai-markdown li {
+    margin: 2px 0;
+    font-size: 12px;
+}
+
+.ai-markdown hr {
+    border: none;
+    border-top: 1px solid #dee2e6;
+    margin: 8px 0;
+}
+
+.ai-markdown .ai-math-display {
+    display: block;
+    overflow-x: auto;
+    text-align: center;
+    margin: 8px 0;
+}
+
+.ai-markdown .ai-math-inline {
+    display: inline;
 }
 
 /* Loading indicator */
