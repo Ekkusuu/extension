@@ -139,6 +139,24 @@
     box-shadow: 0 0 0 2px rgba(255, 174, 0, 0.25);
 }
 
+.ai-settings-panel select {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: inherit;
+    background: #ffffff;
+    cursor: pointer;
+    margin-bottom: 4px;
+}
+
+.ai-settings-panel select:focus {
+    outline: none;
+    border-color: #ffae00;
+    box-shadow: 0 0 0 2px rgba(255, 174, 0, 0.25);
+}
+
 .ai-settings-panel .settings-hint {
     font-size: 10px;
     color: #6c757d;

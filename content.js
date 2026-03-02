@@ -37,9 +37,17 @@
             </div>
         </div>
         <div class="ai-settings-panel" id="ai-settings-panel">
-            <label for="ai-sync-key">Sync Token</label>
-            <input type="password" id="ai-sync-key" placeholder="Enter token...">
-            <div class="settings-hint">Token for clipboard sync</div>
+            <label for="ai-provider-select">Provider</label>
+            <select id="ai-provider-select" class="ai-settings-select">
+                <option value="gemini">Gemini (Google)</option>
+                <option value="openai">OpenAI (GPT)</option>
+                <option value="anthropic">Anthropic (Claude)</option>
+                <option value="openrouter">OpenRouter</option>
+                <option value="grok">Grok (xAI)</option>
+            </select>
+            <label for="ai-sync-key" style="margin-top:8px">API Key</label>
+            <input type="password" id="ai-sync-key" placeholder="Enter API key...">
+            <div class="settings-hint">Key for the selected AI provider</div>
             <button id="ai-save-settings">Save</button>
         </div>
         <div class="ai-chatbox-messages">
@@ -82,6 +90,7 @@
     let settingsOpen = false;
     let currentImageBase64 = null;
     let currentImageMimeType = null;
+    let currentProvider = 'gemini';
 
     // Toggle chatbox
     function toggleChatbox() {
@@ -186,75 +195,106 @@
         dropzone.querySelector('.ai-dropzone-content').style.display = 'flex';
     }
 
-    // Get API key from storage (disguised as "sync key")
+    // Get API key and provider from storage
     async function getApiKey() {
         return new Promise((resolve) => {
-            browser.storage.local.get('geminiApiKey', (result) => {
-                resolve(result.geminiApiKey || null);
+            browser.storage.local.get(['geminiApiKey', 'apiProvider'], (result) => {
+                resolve({
+                    key: result.geminiApiKey || null,
+                    provider: result.apiProvider || 'gemini'
+                });
             });
         });
     }
 
-    // Save API key
-    async function saveApiKey(key) {
+    // Save API key and provider
+    async function saveApiKey(key, provider) {
         return new Promise((resolve) => {
-            browser.storage.local.set({ geminiApiKey: key }, () => {
+            browser.storage.local.set({ geminiApiKey: key, apiProvider: provider }, () => {
+                currentProvider = provider;
                 resolve();
             });
         });
     }
 
-    // Send request to Gemini API
-    async function sendToGemini(text, imageBase64 = null, imageMimeType = null) {
-        const apiKey = await getApiKey();
-        if (!apiKey) {
-            throw new Error('Sync key not configured. Click ⚙️ to set up.');
-        }
-
-        const contents = [];
-        const parts = [];
-
-        // System instruction - always prepended
+    // Build request body based on provider
+    function buildRequestBody(provider, text, imageBase64, imageMimeType) {
         const instruction = 'IMPORTANT: Respond with ONLY the correct answer. No explanation, no reasoning, no additional text. Just the answer itself (letter, number, word, or short phrase).';
 
-        // Add instruction first as text
-        parts.push({ text: instruction });
+        let userText = text ? 'Question: ' + text : 'What is the correct answer to this question shown in the image?';
 
-        // Add image if present
-        if (imageBase64 && imageMimeType) {
-            parts.push({
-                inline_data: {
-                    mime_type: imageMimeType,
-                    data: imageBase64
-                }
-            });
-        }
-
-        // Add user's question/text if provided
-        if (text) {
-            parts.push({ text: 'Question: ' + text });
-        } else if (imageBase64) {
-            parts.push({ text: 'What is the correct answer to this question shown in the image?' });
-        }
-
-        contents.push({ parts: parts });
-
-        const requestBody = {
-            contents: contents,
-            generationConfig: {
-                temperature: 0.1,
-                topK: 1,
-                topP: 0.8,
-                maxOutputTokens: 2048
+        if (provider === 'gemini') {
+            const parts = [];
+            parts.push({ text: instruction });
+            if (imageBase64 && imageMimeType) {
+                parts.push({ inline_data: { mime_type: imageMimeType, data: imageBase64 } });
             }
-        };
+            parts.push({ text: userText });
+            return {
+                contents: [{ parts: parts }],
+                generationConfig: { temperature: 0.1, topK: 1, topP: 0.8, maxOutputTokens: 2048 }
+            };
+        }
+
+        if (provider === 'openai' || provider === 'openrouter' || provider === 'grok') {
+            const messages = [
+                { role: 'system', content: instruction }
+            ];
+            const userContent = [];
+            if (imageBase64 && imageMimeType) {
+                userContent.push({ type: 'image_url', image_url: { url: `data:${imageMimeType};base64,${imageBase64}` } });
+            }
+            userContent.push({ type: 'text', text: userText });
+            messages.push({ role: 'user', content: userContent });
+
+            const body = {
+                messages: messages,
+                temperature: 0.1,
+                max_tokens: 2048
+            };
+            if (provider === 'openai') {
+                body.model = 'gpt-4o';
+            } else if (provider === 'grok') {
+                body.model = 'grok-3';
+            } else {
+                body.model = 'openai/gpt-4o';
+            }
+            return body;
+        }
+
+        if (provider === 'anthropic') {
+            const userContent = [];
+            if (imageBase64 && imageMimeType) {
+                userContent.push({ type: 'image', source: { type: 'base64', media_type: imageMimeType, data: imageBase64 } });
+            }
+            userContent.push({ type: 'text', text: userText });
+            return {
+                model: 'claude-sonnet-4-20250514',
+                max_tokens: 2048,
+                system: instruction,
+                messages: [{ role: 'user', content: userContent }]
+            };
+        }
+
+        return {};
+    }
+
+    // Send request to selected AI provider
+    async function sendToAI(text, imageBase64 = null, imageMimeType = null) {
+        const { key: apiKey, provider } = await getApiKey();
+        if (!apiKey) {
+            throw new Error('API key not configured. Click ⚙️ to set up.');
+        }
+
+        const requestBody = buildRequestBody(provider, text, imageBase64, imageMimeType);
 
         // Send request through background script to avoid CORS
         return new Promise((resolve, reject) => {
             browser.runtime.sendMessage({
                 type: 'sendToAPI',
                 apiKey: apiKey,
-                requestBody: requestBody
+                requestBody: requestBody,
+                provider: provider
             }, (response) => {
                 if (browser.runtime.lastError) {
                     reject(new Error(browser.runtime.lastError.message));
@@ -290,7 +330,7 @@
         updateStatus('Processing...');
 
         try {
-            const response = await sendToGemini(text, currentImageBase64, currentImageMimeType);
+            const response = await sendToAI(text, currentImageBase64, currentImageMimeType);
             removeLoadingIndicator();
             addMessage(response, false);
             updateStatus('');
@@ -303,11 +343,15 @@
         }
     }
 
-    // Load saved API key into settings
+    // Load saved API key and provider into settings
     async function loadSettings() {
-        const apiKey = await getApiKey();
-        if (apiKey) {
-            document.getElementById('ai-sync-key').value = apiKey;
+        const { key, provider } = await getApiKey();
+        if (key) {
+            document.getElementById('ai-sync-key').value = key;
+        }
+        if (provider) {
+            currentProvider = provider;
+            document.getElementById('ai-provider-select').value = provider;
         }
     }
 
@@ -320,13 +364,15 @@
     
     document.getElementById('ai-save-settings').addEventListener('click', async () => {
         const keyInput = document.getElementById('ai-sync-key');
+        const providerSelect = document.getElementById('ai-provider-select');
         const key = keyInput.value.trim();
+        const provider = providerSelect.value;
         if (key) {
-            await saveApiKey(key);
+            await saveApiKey(key, provider);
             updateStatus('Settings saved!');
             toggleSettings();
         } else {
-            updateStatus('Please enter a sync key', true);
+            updateStatus('Please enter an API key', true);
         }
     });
     

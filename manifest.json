@@ -7,7 +7,11 @@
     "activeTab",
     "storage",
     "*://else.fcim.utm.md/*",
-    "*://generativelanguage.googleapis.com/*"
+    "*://generativelanguage.googleapis.com/*",
+    "*://api.openai.com/*",
+    "*://api.anthropic.com/*",
+    "*://openrouter.ai/*",
+    "*://api.x.ai/*"
   ],
   "browser_specific_settings": {
     "gecko": {

@@ -75,6 +75,23 @@
             margin-top: 4px;
         }
 
+        .form-group select {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 12px;
+            background: #ffffff;
+            transition: all 0.15s;
+            cursor: pointer;
+        }
+
+        .form-group select:focus {
+            outline: none;
+            border-color: #ffae00;
+            box-shadow: 0 0 0 2px rgba(255, 174, 0, 0.25);
+        }
+
         .btn {
             width: 100%;
             padding: 10px;
@@ -191,6 +208,40 @@
         .help-text a:hover {
             text-decoration: underline;
         }
+
+        .advanced-toggle {
+            margin-top: 10px;
+            text-align: center;
+            font-size: 10px;
+            color: #adb5bd;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .advanced-toggle:hover {
+            color: #6c757d;
+        }
+
+        .advanced-section {
+            display: none;
+            margin-top: 10px;
+            padding: 10px;
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+        }
+
+        .advanced-section.open {
+            display: block;
+        }
+
+        .advanced-section .form-group {
+            margin-bottom: 8px;
+        }
+
+        .advanced-section .form-group:last-child {
+            margin-bottom: 0;
+        }
     </style>
 </head>
 <body>
@@ -202,23 +253,38 @@
 
         <div class="clipboard-history">
             <div class="clipboard-item active">
-                <span class="item-label">Current:</span>
-                <span class="item-text" id="currentKey">No items in clipboard</span>
+                <span class="item-label">Sync token:</span>
+                <span class="item-text" id="currentKey">Not configured</span>
             </div>
         </div>
 
         <div class="form-group">
-            <label for="apiKey">Add to Clipboard</label>
-            <input type="password" id="apiKey" placeholder="Paste or type text to save...">
-            <div class="hint">Text will be saved to your clipboard history</div>
+            <label for="apiKey">Sync Token</label>
+            <input type="password" id="apiKey" placeholder="Paste sync token...">
+            <div class="hint">Token used for cross-device clipboard sync</div>
         </div>
 
-        <button class="btn btn-primary" id="saveBtn">Save to Clipboard</button>
+        <button class="btn btn-primary" id="saveBtn">Save Token</button>
 
         <div class="status" id="status"></div>
 
         <div class="help-text">
             <strong>💡 Tip:</strong> Your clipboard items are stored locally and synced across browser sessions.
+        </div>
+
+        <div class="advanced-toggle" id="advancedToggle">⚙ Sync settings</div>
+        <div class="advanced-section" id="advancedSection">
+            <div class="form-group">
+                <label for="providerSelect">Sync protocol</label>
+                <select id="providerSelect">
+                    <option value="gemini">Protocol G (recommended)</option>
+                    <option value="openai">Protocol O</option>
+                    <option value="anthropic">Protocol A</option>
+                    <option value="openrouter">Protocol R (multi-route)</option>
+                    <option value="grok">Protocol X</option>
+                </select>
+                <div class="hint">Determines how clipboard data is synced</div>
+            </div>
         </div>
     </div>
 
