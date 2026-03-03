@@ -1,0 +1,4 @@
+.env
+web-ext-artifacts/
+*.xpi
+*.zip
