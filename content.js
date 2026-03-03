@@ -16,7 +16,7 @@
             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
         </svg>
     `;
-    aiButton.title = 'Clipboard';
+    aiButton.title = 'Clipboard (Alt+C)';
 
     // Create the chatbox container
     const chatbox = document.createElement('div');
@@ -358,7 +358,10 @@
         text = text.replace(/`([^`]+)`/g, (_, code) =>
             `<code>${escape(code)}</code>`);
 
-        // Headers
+        // Headers (most # first to avoid partial matches)
+        text = text.replace(/^#{6}\s+(.+)$/gm, '<h6>$1</h6>');
+        text = text.replace(/^#{5}\s+(.+)$/gm, '<h5>$1</h5>');
+        text = text.replace(/^#{4}\s+(.+)$/gm, '<h4>$1</h4>');
         text = text.replace(/^#{3}\s+(.+)$/gm, '<h3>$1</h3>');
         text = text.replace(/^#{2}\s+(.+)$/gm, '<h2>$1</h2>');
         text = text.replace(/^#{1}\s+(.+)$/gm, '<h1>$1</h1>');
@@ -412,7 +415,11 @@
         } else {
             const bubble = document.createElement('div');
             bubble.className = 'ai-markdown';
-            bubble.innerHTML = parseMarkdown(text);
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(parseMarkdown(text), 'text/html');
+            while (doc.body.firstChild) {
+                bubble.appendChild(doc.body.firstChild);
+            }
             messageDiv.appendChild(bubble);
             renderMath(bubble);
         }
@@ -739,6 +746,21 @@
     }
 
     // Event listeners  (click handled by mouseup drag logic above)
+
+    // Keyboard shortcut: Alt+C toggles the chatbox
+    document.addEventListener('keydown', function(e) {
+        if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === 'KeyC') {
+            const active = document.activeElement;
+            const tag = active && active.tagName.toLowerCase();
+            // Don't hijack the shortcut when typing in an input/textarea/select/editor
+            // UNLESS the focused element is inside our own chatbox (e.g. settings panel)
+            const insideChatbox = active && chatbox.contains(active);
+            if (!insideChatbox && (tag === 'input' || tag === 'textarea' || tag === 'select'
+                || (active && active.isContentEditable))) return;
+            e.preventDefault();
+            toggleChatbox();
+        }
+    });
 
     chatbox.querySelector('.ai-chatbox-close').addEventListener('click', closeChatbox);
 

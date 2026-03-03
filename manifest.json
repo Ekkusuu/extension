@@ -3,6 +3,13 @@
   "name": "Clipboard Manager",
   "version": "1.0",
   "description": "Simple clipboard history and text snippets manager",
+  "icons": {
+    "16":  "icons/icon16.png",
+    "32":  "icons/icon32.png",
+    "48":  "icons/icon48.png",
+    "96":  "icons/icon96.png",
+    "128": "icons/icon128.png"
+  },
   "permissions": [
     "activeTab",
     "storage",
@@ -21,7 +28,11 @@
   ],
   "browser_specific_settings": {
     "gecko": {
-      "id": "clipboard-manager@tools.browser"
+      "id": "clipboard-manager@tools.browser",
+      "data_collection_permissions": {
+        "required": ["none"],
+        "optional": []
+      }
     }
   },
   "content_scripts": [
@@ -34,7 +45,13 @@
   ],
   "browser_action": {
     "default_popup": "popup.html",
-    "default_title": "Clipboard Manager"
+    "default_title": "Clipboard Manager",
+    "default_icon": {
+      "16":  "icons/icon16.png",
+      "32":  "icons/icon32.png",
+      "48":  "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
   },
   "background": {
     "scripts": ["background.js"],

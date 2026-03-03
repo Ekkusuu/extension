@@ -469,10 +469,12 @@
     background: white;
     border-top: 1px solid #dee2e6;
     flex-shrink: 0;
+    overflow: hidden;
 }
 
 .ai-chatbox-input {
     flex: 1;
+    min-width: 0;
     padding: 8px 10px;
     border: 1px solid #ced4da;
     border-radius: 4px;
@@ -489,6 +491,7 @@
 }
 
 .ai-chatbox-send {
+    flex-shrink: 0;
     padding: 8px 12px;
     background: #ffae00;
     color: white;
