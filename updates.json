@@ -1,0 +1,12 @@
+{
+  "addons": {
+    "clipboard-manager@tools.browser": {
+      "updates": [
+        {
+          "version": "1.0",
+          "update_link": "https://github.com/mcittkmims/extension/releases/download/v1.0/extension.xpi"
+        }
+      ]
+    }
+  }
+}
