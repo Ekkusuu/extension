@@ -21,14 +21,12 @@
     font-size: 10px;
     font-family: inherit;
     transition: all 0.2s ease-in-out;
-    opacity: 0.6;
     box-shadow: 0 1px 4px rgba(0,0,0,0.18);
     cursor: grab;
     touch-action: none;
 }
 
 #moodle-ai-assistant-btn:hover {
-    opacity: 0.85;
     background: rgba(255, 255, 255, 0.9);
     color: #495057;
     border-color: rgba(150, 150, 150, 0.5);
@@ -36,7 +34,6 @@
 }
 
 #moodle-ai-assistant-btn.active {
-    opacity: 0.9;
     background: rgba(255, 255, 255, 0.95);
     color: #495057;
     border-color: #adb5bd;
@@ -58,10 +55,12 @@
     z-index: 2147483645;
     width: 320px;
     max-height: 480px;
+    min-width: 220px;
+    min-height: 0;
     background: #ffffff;
     border-radius: 8px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
-    overflow: hidden;
+    overflow: visible;
     border: 1px solid rgba(0,0,0,.12);
 }
 
@@ -78,6 +77,8 @@
     background: #ffae00;
     color: white;
     border-bottom: 1px solid rgba(0,0,0,.125);
+    border-radius: 8px 8px 0 0;
+    flex-shrink: 0;
 }
 
 .ai-chatbox-title {
@@ -122,13 +123,17 @@
     display: none;
     position: absolute;
     top: 41px;
-    left: 0;
-    right: 0;
+    left: -1px;
+    right: -1px;
     z-index: 100;
     padding: 12px;
     background: #f8f9fa;
-    border-bottom: 1px solid #dee2e6;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    border: 1px solid #dee2e6;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.12);
+    max-height: 380px;
+    overflow-y: auto;
 }
 
 .ai-settings-panel.open {
@@ -149,6 +154,7 @@
     border-radius: 4px;
     font-size: 12px;
     font-family: inherit;
+    box-sizing: border-box;
 }
 
 .ai-settings-panel input:focus {
@@ -181,19 +187,26 @@
     margin-top: 4px;
 }
 
-.ai-settings-panel button {
-    margin-top: 8px;
-    padding: 6px 12px;
-    background: #ffae00;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    font-size: 12px;
-    cursor: pointer;
-}
-
 .ai-settings-panel button:hover {
     background: #e09900;
+}
+
+.ai-settings-panel input[type="range"] {
+    width: 100%;
+    padding: 0;
+    border: none;
+    border-radius: 4px;
+    box-shadow: none;
+    background: #dee2e6;
+    accent-color: #ffae00;
+    cursor: pointer;
+    height: 4px;
+}
+
+.ai-settings-panel input[type="range"]:focus {
+    outline: none;
+    box-shadow: none;
+    border-color: transparent;
 }
 
 /* Messages Container */
@@ -201,7 +214,6 @@
     flex: 1;
     overflow-y: auto;
     padding: 10px;
-    max-height: 180px;
     min-height: 80px;
     background: #f8f9fa;
 }
@@ -456,6 +468,7 @@
     gap: 6px;
     background: white;
     border-top: 1px solid #dee2e6;
+    flex-shrink: 0;
 }
 
 .ai-chatbox-input {
@@ -502,18 +515,58 @@
     height: 16px;
 }
 
-/* Status */
-.ai-chatbox-status {
-    padding: 0 10px 6px;
-    font-size: 10px;
-    color: #6c757d;
-    text-align: center;
-    min-height: 16px;
+/* Resize corner grip */
+.ai-resize-corner {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    z-index: 10;
+    overflow: hidden;
 }
 
-.ai-chatbox-status.error {
-    color: #dc3545;
+.ai-resize-corner::after {
+    content: '';
+    position: absolute;
+    width: 8px;
+    height: 8px;
 }
+
+/* Bottom-right (default) */
+.ai-resize-corner:not([data-corner])::after,
+.ai-resize-corner[data-corner="br"]::after {
+    bottom: 3px; right: 3px;
+    border-right: 2px solid rgba(0,0,0,0.2);
+    border-bottom: 2px solid rgba(0,0,0,0.2);
+    border-radius: 0 0 3px 0;
+}
+/* Top-left */
+.ai-resize-corner[data-corner="tl"]::after {
+    top: 3px; left: 3px;
+    border-left: 2px solid rgba(0,0,0,0.2);
+    border-top: 2px solid rgba(0,0,0,0.2);
+    border-radius: 3px 0 0 0;
+}
+/* Top-right */
+.ai-resize-corner[data-corner="tr"]::after {
+    top: 3px; right: 3px;
+    border-right: 2px solid rgba(0,0,0,0.2);
+    border-top: 2px solid rgba(0,0,0,0.2);
+    border-radius: 0 3px 0 0;
+}
+/* Bottom-left */
+.ai-resize-corner[data-corner="bl"]::after {
+    bottom: 3px; left: 3px;
+    border-left: 2px solid rgba(0,0,0,0.2);
+    border-bottom: 2px solid rgba(0,0,0,0.2);
+    border-radius: 0 0 0 3px;
+}
+
+.ai-resize-corner:hover::after {
+    border-color: #ffae00;
+}
+
+/* Resize handle */
+.ai-resize-handle {display:none}
 
 /* Scrollbar styling */
 .ai-chatbox-messages::-webkit-scrollbar {

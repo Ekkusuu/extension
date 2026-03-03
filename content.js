@@ -43,7 +43,16 @@
             <label for="ai-sync-key" style="margin-top:8px">API Key</label>
             <input type="password" id="ai-sync-key" placeholder="Enter API key...">
             <div class="settings-hint">Key for the selected AI provider</div>
-            <button id="ai-save-settings">Save</button>
+            <label for="ai-opacity-slider" style="margin-top:8px">Chat Opacity</label>
+            <div style="display:flex;align-items:center;gap:8px">
+                <input type="range" id="ai-opacity-slider" min="10" max="100" step="5" value="95" style="flex:1">
+                <span id="ai-opacity-value" style="font-size:11px;color:#495057;min-width:30px;text-align:right">95%</span>
+            </div>
+            <label for="ai-btn-opacity-slider" style="margin-top:8px">Button Opacity</label>
+            <div style="display:flex;align-items:center;gap:8px">
+                <input type="range" id="ai-btn-opacity-slider" min="10" max="100" step="5" value="60" style="flex:1">
+                <span id="ai-btn-opacity-value" style="font-size:11px;color:#495057;min-width:30px;text-align:right">60%</span>
+            </div>
         </div>
         <div class="ai-chatbox-messages">
         </div>
@@ -70,7 +79,8 @@
                 </svg>
             </button>
         </div>
-        <div class="ai-chatbox-status" id="ai-chatbox-status"></div>
+
+        <div class="ai-resize-corner" id="ai-resize-corner"></div>
     `;
 
     // Insert elements as a floating overlay on the page
@@ -103,19 +113,59 @@
         };
     }
 
+    // Corner-tracking & resize anchor (must be declared before first positionChatbox call)
+    let _cornerV = 'bottom'; // which chatbox side is near the button: 'top' or 'bottom'
+    let _cornerH = 'right';  // 'left' or 'right'
+    let resizeRV = 'top';    // which side the resize corner is on
+    let resizeRH = 'left';
+    let resizeAnchorX = 0, resizeAnchorY = 0;
+
     function positionChatbox(bl, bt) {
-        const boxW = 320;
+        const boxW = chatbox.offsetWidth  || 320;
         const boxH = chatbox.offsetHeight || 480;
         const bw = aiButton.offsetWidth  || 20;
         const bh = aiButton.offsetHeight || 20;
         const gap = 6;
-        // above if space, otherwise below
-        const top = (bt - boxH - gap >= 4) ? bt - boxH - gap : bt + bh + gap;
-        // right-align with button, keep on screen
-        let left = bl + bw - boxW;
+
+        // ── Vertical ──────────────────────────────────────────────────────
+        const isAbove = bt - boxH - gap >= 4;
+        let top = isAbove ? bt - boxH - gap : bt + bh + gap;
+        top = Math.min(top, window.innerHeight - boxH - 4);
+        top = Math.max(4, top);
+
+        // ── Horizontal: left-align if button is in left half, otherwise right-align ──
+        const btnCenterX = bl + bw / 2;
+        const isButtonLeft = btnCenterX < window.innerWidth / 2;
+        let left;
+        if (isButtonLeft) {
+            left = bl; // chat extends rightward from button left edge
+        } else {
+            left = bl + bw - boxW; // chat extends leftward from button right edge
+        }
         left = Math.max(4, Math.min(window.innerWidth - boxW - 4, left));
+
         chatbox.style.left = left + 'px';
         chatbox.style.top  = top  + 'px';
+
+        // Track which chatbox corner is near the button (opposite = resize corner)
+        _cornerV = isAbove ? 'bottom' : 'top';
+        _cornerH = isButtonLeft ? 'left' : 'right';
+        updateResizeCorner();
+    }
+
+    function updateResizeCorner() {
+        const el = document.getElementById('ai-resize-corner');
+        if (!el) return;
+        resizeRV = _cornerV === 'bottom' ? 'top' : 'bottom';
+        resizeRH = _cornerH === 'right'  ? 'left' : 'right';
+        el.style.top = el.style.bottom = el.style.left = el.style.right = '';
+        el.style[resizeRV] = '0';
+        el.style[resizeRH] = '0';
+        const radiusMap = { tl:'8px 0 0 0', tr:'0 8px 0 0', br:'0 0 8px 0', bl:'0 0 0 8px' };
+        const key = resizeRV[0] + resizeRH[0];
+        el.setAttribute('data-corner', key);
+        el.style.borderRadius = radiusMap[key] || '';
+        el.style.cursor = (resizeRV === 'top') === (resizeRH === 'left') ? 'nwse-resize' : 'nesw-resize';
     }
 
     function applyPos(left, top) {
@@ -174,6 +224,7 @@
     let currentImageBase64 = null;
     let currentImageMimeType = null;
     let currentProvider = 'gemini';
+    let _settingsMinH = 354; // measured once at init
 
     // Available models per provider
     const PROVIDER_MODELS = {
@@ -395,22 +446,10 @@
         return div.innerHTML;
     }
 
-    // Update status
-    function updateStatus(message, isError = false) {
-        const status = document.getElementById('ai-chatbox-status');
-        status.textContent = message;
-        status.className = 'ai-chatbox-status' + (isError ? ' error' : '');
-        if (message) {
-            setTimeout(() => {
-                status.textContent = '';
-            }, 5000);
-        }
-    }
 
     // Handle image file
     function handleImageFile(file) {
         if (!file.type.startsWith('image/')) {
-            updateStatus('Please drop an image file', true);
             return;
         }
 
@@ -427,7 +466,6 @@
             previewImg.src = base64Data;
             preview.style.display = 'flex';
             dropzone.querySelector('.ai-dropzone-content').style.display = 'none';
-            updateStatus('Image attached. Add a note and press Enter.');
         };
         reader.readAsDataURL(file);
     }
@@ -445,25 +483,89 @@
     // Get API key, provider and model from storage
     async function getApiKey() {
         return new Promise((resolve) => {
-            browser.storage.local.get(['geminiApiKey', 'apiProvider', 'apiModel'], (result) => {
+            browser.storage.local.get(['geminiApiKey', 'apiProvider', 'apiModel', 'chatOpacity', 'btnOpacity', 'chatWidth', 'chatHeight'], (result) => {
                 resolve({
                     key: result.geminiApiKey || null,
                     provider: result.apiProvider || 'gemini',
-                    model: result.apiModel || null
+                    model: result.apiModel || null,
+                    opacity: result.chatOpacity != null ? result.chatOpacity : 0.95,
+                    btnOpacity: result.btnOpacity != null ? result.btnOpacity : 0.25,
+                    chatWidth: result.chatWidth != null ? result.chatWidth : 320,
+                    chatHeight: result.chatHeight != null ? result.chatHeight : 480
                 });
             });
         });
     }
 
     // Save API key, provider and model
-    async function saveApiKey(key, provider, model) {
+    async function saveApiKey(key, provider, model, opacity, btnOp, chatWidth, chatHeight) {
         return new Promise((resolve) => {
-            browser.storage.local.set({ geminiApiKey: key, apiProvider: provider, apiModel: model }, () => {
+            browser.storage.local.set({ geminiApiKey: key, apiProvider: provider, apiModel: model, chatOpacity: opacity, btnOpacity: btnOp, chatWidth, chatHeight }, () => {
                 currentProvider = provider;
                 resolve();
             });
         });
     }
+
+    function applyChatOpacity(val) {
+        chatbox.style.opacity = val;
+    }
+
+    function applyChatSize(w, h) {
+        w = Math.max(220, Math.min(700, w));
+        h = Math.max(_settingsMinH, Math.min(700, h));
+        chatbox.style.width = w + 'px';
+        chatbox.style.height = h + 'px';
+        chatbox.style.maxHeight = h + 'px';
+    }
+
+    let currentBtnOpacity = 0.25;
+    function applyButtonOpacity(val) {
+        currentBtnOpacity = val;
+        aiButton.style.opacity = val;
+    }
+
+    // ── Corner resize (both W and H) ─────────────────────────────────────────
+    let isResizing = false;
+    const resizeCorner = document.getElementById('ai-resize-corner');
+
+    resizeCorner.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        const rect = chatbox.getBoundingClientRect();
+        // Anchor = the corner OPPOSITE to the resize handle; stays fixed during drag
+        resizeAnchorX = resizeRH === 'left' ? rect.right  : rect.left;
+        resizeAnchorY = resizeRV === 'top'  ? rect.bottom : rect.top;
+        e.preventDefault();
+        e.stopPropagation();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+        let newW = resizeRH === 'left' ? resizeAnchorX - e.clientX : e.clientX - resizeAnchorX;
+        let newH = resizeRV === 'top'  ? resizeAnchorY - e.clientY : e.clientY - resizeAnchorY;
+        newW = Math.max(220, Math.min(700, newW));
+        newH = Math.max(_settingsMinH, Math.min(700, newH));
+
+        let newLeft = resizeRH === 'left' ? resizeAnchorX - newW : resizeAnchorX;
+        let newTop  = resizeRV === 'top'  ? resizeAnchorY - newH : resizeAnchorY;
+
+        // Clamp position so the chat box stays fully on screen
+        newLeft = Math.max(4, Math.min(window.innerWidth  - newW - 4, newLeft));
+        newTop  = Math.max(4, Math.min(window.innerHeight - newH - 4, newTop));
+
+        chatbox.style.width     = newW + 'px';
+        chatbox.style.height    = newH + 'px';
+        chatbox.style.maxHeight = newH + 'px';
+        chatbox.style.left = newLeft + 'px';
+        chatbox.style.top  = newTop  + 'px';
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (!isResizing) return;
+        isResizing = false;
+        autoSave();
+    });
+    // ─────────────────────────────────────────────────────────────────────────
 
     // Build request body based on provider
     function buildRequestBody(provider, model, text, imageBase64, imageMimeType) {
@@ -578,7 +680,6 @@
         const text = input.value.trim();
 
         if (!text && !currentImageBase64) {
-            updateStatus('Please enter a note or add an image', true);
             return;
         }
 
@@ -592,60 +693,80 @@
         input.value = '';
 
         addLoadingIndicator();
-        updateStatus('Processing...');
 
         try {
             const response = await sendToAI(text, currentImageBase64, currentImageMimeType);
             removeLoadingIndicator();
             addMessage(response, false);
-            updateStatus('');
-            
             removeImage();
         } catch (error) {
             removeLoadingIndicator();
             addMessage('Error: ' + error.message, false);
-            updateStatus(error.message, true);
         }
     }
 
-    // Load saved API key, provider and model into settings
+    // Load saved settings
     async function loadSettings() {
-        const { key, provider, model } = await getApiKey();
-        if (key) {
-            document.getElementById('ai-sync-key').value = key;
-        }
+        const { key, provider, model, opacity, btnOpacity, chatWidth, chatHeight } = await getApiKey();
+        if (key) document.getElementById('ai-sync-key').value = key;
         const resolvedProvider = provider || 'gemini';
         currentProvider = resolvedProvider;
         document.getElementById('ai-provider-select').value = resolvedProvider;
         populateModels(resolvedProvider, model);
+
+        const pct = Math.round(opacity * 100);
+        document.getElementById('ai-opacity-slider').value = pct;
+        document.getElementById('ai-opacity-value').textContent = pct + '%';
+        applyChatOpacity(opacity);
+
+        const btnPct = Math.round(btnOpacity * 100);
+        document.getElementById('ai-btn-opacity-slider').value = btnPct;
+        document.getElementById('ai-btn-opacity-value').textContent = btnPct + '%';
+        applyButtonOpacity(btnOpacity);
+
+        applyChatSize(chatWidth, chatHeight);
+    }
+
+    async function autoSave() {
+        const key      = document.getElementById('ai-sync-key').value.trim();
+        const provider = document.getElementById('ai-provider-select').value;
+        const model    = document.getElementById('ai-model-select').value;
+        const opacity  = parseInt(document.getElementById('ai-opacity-slider').value) / 100;
+        const btnOp    = parseInt(document.getElementById('ai-btn-opacity-slider').value) / 100;
+        const chatWidth  = chatbox.offsetWidth  || 320;
+        const chatHeight = chatbox.offsetHeight || 480;
+        await saveApiKey(key, provider, model, opacity, btnOp, chatWidth, chatHeight);
     }
 
     // Event listeners  (click handled by mouseup drag logic above)
-    
+
     chatbox.querySelector('.ai-chatbox-close').addEventListener('click', closeChatbox);
-    
+
     document.getElementById('ai-settings-toggle').addEventListener('click', toggleSettings);
-    
-    // Repopulate models when provider changes
+
+    // Provider change: repopulate models then auto-save
     document.getElementById('ai-provider-select').addEventListener('change', () => {
         const provider = document.getElementById('ai-provider-select').value;
         populateModels(provider, null);
+        autoSave();
     });
-    
-    document.getElementById('ai-save-settings').addEventListener('click', async () => {
-        const keyInput = document.getElementById('ai-sync-key');
-        const providerSelect = document.getElementById('ai-provider-select');
-        const modelSelect = document.getElementById('ai-model-select');
-        const key = keyInput.value.trim();
-        const provider = providerSelect.value;
-        const model = modelSelect.value;
-        if (key) {
-            await saveApiKey(key, provider, model);
-            updateStatus('Settings saved!');
-            toggleSettings();
-        } else {
-            updateStatus('Please enter an API key', true);
-        }
+
+    document.getElementById('ai-model-select').addEventListener('change', () => autoSave());
+
+    document.getElementById('ai-sync-key').addEventListener('blur', () => autoSave());
+
+    document.getElementById('ai-opacity-slider').addEventListener('input', (e) => {
+        const pct = parseInt(e.target.value);
+        document.getElementById('ai-opacity-value').textContent = pct + '%';
+        applyChatOpacity(pct / 100);
+        autoSave();
+    });
+
+    document.getElementById('ai-btn-opacity-slider').addEventListener('input', (e) => {
+        const pct = parseInt(e.target.value);
+        document.getElementById('ai-btn-opacity-value').textContent = pct + '%';
+        applyButtonOpacity(pct / 100);
+        autoSave();
     });
     
     document.getElementById('ai-chatbox-send').addEventListener('click', handleSend);
@@ -714,7 +835,44 @@
 
     // Load settings on init
     loadSettings();
-    loadKaTeX(); // pre-load KaTeX so math renders instantly on first message
+    loadKaTeX();
+
+    // Measure settings panel height once so min height is always at least that tall
+    // Must temporarily show the chatbox (it's display:none), else offsetHeight = 0
+    (function measureSettingsHeight() {
+        const panel = document.getElementById('ai-settings-panel');
+        const header = chatbox.querySelector('.ai-chatbox-header');
+        const boxPrev = { display: chatbox.style.display, visibility: chatbox.style.visibility };
+        const panPrev = { display: panel.style.display,   visibility: panel.style.visibility };
+        chatbox.style.visibility = 'hidden';
+        chatbox.style.display    = 'flex';
+        panel.style.visibility   = 'hidden';
+        panel.style.display      = 'block';
+        const headerH = header ? header.offsetHeight : 41;
+        const measured = headerH + panel.offsetHeight + 16;
+        if (measured > 100) _settingsMinH = measured; // only override fallback if measurement is valid
+        chatbox.style.display    = boxPrev.display;
+        chatbox.style.visibility = boxPrev.visibility;
+        panel.style.display      = panPrev.display;
+        panel.style.visibility   = panPrev.visibility;
+    })();
+
+    // Listen for reset message from popup
+    browser.runtime.onMessage.addListener((msg) => {
+        if (msg.type === 'resetPosition') {
+            try { localStorage.removeItem(POS_KEY); } catch(e) {}
+            const c = clamp(window.innerWidth - 38, window.innerHeight - 38);
+            applyPos(c.left, c.top);
+            applyChatSize(320, 480);
+            // Reset opacity defaults: chat 95%, button 25%
+            applyChatOpacity(0.95);
+            document.getElementById('ai-opacity-slider').value = 95;
+            document.getElementById('ai-opacity-value').textContent = '95%';
+            applyButtonOpacity(0.25);
+            document.getElementById('ai-btn-opacity-slider').value = 25;
+            document.getElementById('ai-btn-opacity-value').textContent = '25%';
+        }
+    });
 
     console.log('Quick Notes: Initialized');
 })();

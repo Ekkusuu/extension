@@ -6,6 +6,7 @@
   "permissions": [
     "activeTab",
     "storage",
+    "tabs",
     "<all_urls>",
     "*://generativelanguage.googleapis.com/*",
     "*://api.openai.com/*",

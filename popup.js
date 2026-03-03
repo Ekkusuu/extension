@@ -8,7 +8,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const syncKeyInput = document.getElementById('syncKey');
     const providerSelect = document.getElementById('providerSelect');
     const saveSyncBtn = document.getElementById('saveSyncBtn');
-    const syncStatus = document.getElementById('syncStatus');
+    const resetBtn    = document.getElementById('resetBtn');
+    const syncStatus  = document.getElementById('syncStatus');
 
     const advancedToggle = document.getElementById('advancedToggle');
     const advancedSection = document.getElementById('advancedSection');
@@ -51,6 +52,22 @@ document.addEventListener('DOMContentLoaded', function() {
             const preview = text.length > 40 ? text.substring(0, 40) + '…' : text;
             currentKey.textContent = preview;
             clipboardInput.value = '';
+        });
+    });
+
+    // Reset chat opacity, button opacity, size and button position to defaults
+    resetBtn.addEventListener('click', function() {
+        browser.storage.local.set({
+            chatOpacity: 0.95,
+            btnOpacity: 0.25,
+            chatWidth: 320,
+            chatHeight: 480
+        }, function() {
+            showStatus(syncStatus, 'Reset to defaults!', 'success');
+        });
+        // Also tell the content script to reset button position
+        browser.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+            if (tabs[0]) browser.tabs.sendMessage(tabs[0].id, { type: 'resetPosition' });
         });
     });
 
