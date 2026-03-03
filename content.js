@@ -7,13 +7,6 @@
         return;
     }
 
-    // Find the aside element
-    const aside = document.getElementById('block-region-side-pre');
-    if (!aside) {
-        console.log('Quick Notes: Side panel not found');
-        return;
-    }
-
     // Create the clipboard button (small, subtle)
     const aiButton = document.createElement('button');
     aiButton.id = 'moodle-ai-assistant-btn';
@@ -53,9 +46,6 @@
             <button id="ai-save-settings">Save</button>
         </div>
         <div class="ai-chatbox-messages">
-            <div class="ai-message ai-assistant">
-                <p>Paste content or drop an image.</p>
-            </div>
         </div>
         <div class="ai-chatbox-dropzone" id="ai-dropzone">
             <div class="ai-dropzone-content">
@@ -72,7 +62,7 @@
             </div>
         </div>
         <div class="ai-chatbox-input-container">
-            <textarea class="ai-chatbox-input" id="ai-chatbox-input" placeholder="Add a note or question..." rows="2"></textarea>
+            <textarea class="ai-chatbox-input" id="ai-chatbox-input" placeholder="Add to clipboard..." rows="2"></textarea>
             <button class="ai-chatbox-send" id="ai-chatbox-send" title="Send">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="22" y1="2" x2="11" y2="13"></line>
@@ -83,9 +73,100 @@
         <div class="ai-chatbox-status" id="ai-chatbox-status"></div>
     `;
 
-    // Insert elements at the bottom of the sidebar
-    aside.appendChild(chatbox);
-    aside.appendChild(aiButton);
+    // Insert elements as a floating overlay on the page
+    document.body.appendChild(chatbox);
+    document.body.appendChild(aiButton);
+
+    // ── Drag-to-move ──────────────────────────────────────────────────────────
+    const POS_KEY = 'ai_btn_pos';
+    let isDragging = false, dragMoved = false;
+    let dragStartX = 0, dragStartY = 0, btnStartLeft = 0, btnStartTop = 0;
+
+    function loadBtnPos() {
+        try {
+            const s = localStorage.getItem(POS_KEY);
+            if (s) return JSON.parse(s);
+        } catch(e) {}
+        return { left: window.innerWidth - 38, top: window.innerHeight - 38 };
+    }
+
+    function saveBtnPos(left, top) {
+        try { localStorage.setItem(POS_KEY, JSON.stringify({ left, top })); } catch(e) {}
+    }
+
+    function clamp(left, top) {
+        const bw = aiButton.offsetWidth  || 20;
+        const bh = aiButton.offsetHeight || 20;
+        return {
+            left: Math.max(4, Math.min(window.innerWidth  - bw - 4, left)),
+            top:  Math.max(4, Math.min(window.innerHeight - bh - 4, top))
+        };
+    }
+
+    function positionChatbox(bl, bt) {
+        const boxW = 320;
+        const boxH = chatbox.offsetHeight || 480;
+        const bw = aiButton.offsetWidth  || 20;
+        const bh = aiButton.offsetHeight || 20;
+        const gap = 6;
+        // above if space, otherwise below
+        const top = (bt - boxH - gap >= 4) ? bt - boxH - gap : bt + bh + gap;
+        // right-align with button, keep on screen
+        let left = bl + bw - boxW;
+        left = Math.max(4, Math.min(window.innerWidth - boxW - 4, left));
+        chatbox.style.left = left + 'px';
+        chatbox.style.top  = top  + 'px';
+    }
+
+    function applyPos(left, top) {
+        const c = clamp(left, top);
+        aiButton.style.left = c.left + 'px';
+        aiButton.style.top  = c.top  + 'px';
+        positionChatbox(c.left, c.top);
+        return c;
+    }
+
+    // Restore saved position
+    const initPos = loadBtnPos();
+    applyPos(initPos.left, initPos.top);
+
+    aiButton.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
+        isDragging  = true;
+        dragMoved   = false;
+        dragStartX  = e.clientX;
+        dragStartY  = e.clientY;
+        const r     = aiButton.getBoundingClientRect();
+        btnStartLeft = r.left;
+        btnStartTop  = r.top;
+        e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const dx = e.clientX - dragStartX;
+        const dy = e.clientY - dragStartY;
+        if (Math.abs(dx) > 4 || Math.abs(dy) > 4) dragMoved = true;
+        if (dragMoved) {
+            document.body.style.userSelect = 'none';
+            aiButton.style.cursor = 'grabbing';
+            applyPos(btnStartLeft + dx, btnStartTop + dy);
+        }
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (!isDragging) return;
+        isDragging = false;
+        document.body.style.userSelect = '';
+        aiButton.style.cursor = '';
+        if (dragMoved) {
+            const r = aiButton.getBoundingClientRect();
+            saveBtnPos(r.left, r.top);
+        } else {
+            toggleChatbox();
+        }
+    });
+    // ─────────────────────────────────────────────────────────────────────────
 
     // State
     let isOpen = false;
@@ -154,6 +235,10 @@
         isOpen = !isOpen;
         chatbox.classList.toggle('open', isOpen);
         aiButton.classList.toggle('active', isOpen);
+        if (isOpen) {
+            const r = aiButton.getBoundingClientRect();
+            positionChatbox(r.left, r.top);
+        }
     }
 
     // Close chatbox
@@ -535,8 +620,7 @@
         populateModels(resolvedProvider, model);
     }
 
-    // Event listeners
-    aiButton.addEventListener('click', toggleChatbox);
+    // Event listeners  (click handled by mouseup drag logic above)
     
     chatbox.querySelector('.ai-chatbox-close').addEventListener('click', closeChatbox);
     

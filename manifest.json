@@ -6,7 +6,7 @@
   "permissions": [
     "activeTab",
     "storage",
-    "*://else.fcim.utm.md/*",
+    "<all_urls>",
     "*://generativelanguage.googleapis.com/*",
     "*://api.openai.com/*",
     "*://api.anthropic.com/*",
@@ -25,7 +25,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["*://else.fcim.utm.md/*"],
+      "matches": ["<all_urls>"],
       "js": ["katex/katex.min.js", "content.js"],
       "css": ["styles.css", "katex/katex.min.css"],
       "run_at": "document_end"

@@ -1,57 +1,68 @@
 /* Clipboard Extension Styles */
 /* Subtle integration with Moodle theme */
 
-/* Clipboard Button - small and subtle */
+/* Clipboard Button - fixed floating, tiny and transparent */
 #moodle-ai-assistant-btn {
-    display: inline-flex;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 2147483646;
+    display: flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
-    padding: 4px;
-    margin-top: 8px;
-    background: transparent;
-    color: #6c757d;
-    border: 1px solid #dee2e6;
-    border-radius: 3px;
+    width: 20px;
+    height: 20px;
+    padding: 3px;
+    background: rgba(255, 255, 255, 0.75);
+    color: rgba(80, 80, 80, 0.85);
+    border: 1px solid rgba(150, 150, 150, 0.45);
+    border-radius: 4px;
     cursor: pointer;
-    font-size: 11px;
+    font-size: 10px;
     font-family: inherit;
-    transition: all 0.15s ease-in-out;
+    transition: all 0.2s ease-in-out;
     opacity: 0.6;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+    cursor: grab;
+    touch-action: none;
 }
 
 #moodle-ai-assistant-btn:hover {
-    opacity: 1;
-    background: #f8f9fa;
+    opacity: 0.85;
+    background: rgba(255, 255, 255, 0.9);
     color: #495057;
+    border-color: rgba(150, 150, 150, 0.5);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
 #moodle-ai-assistant-btn.active {
-    opacity: 1;
-    background: #e9ecef;
+    opacity: 0.9;
+    background: rgba(255, 255, 255, 0.95);
     color: #495057;
     border-color: #adb5bd;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
 #moodle-ai-assistant-btn svg {
-    width: 12px;
-    height: 12px;
+    width: 11px;
+    height: 11px;
 }
 
-/* Chatbox - styled like Moodle card/block */
+/* Chatbox - fixed floating panel above the button */
 #moodle-ai-chatbox {
     display: none;
     flex-direction: column;
-    width: 100%;
-    max-height: 450px;
-    margin-bottom: 8px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 2147483645;
+    width: 320px;
+    max-height: 480px;
     background: #ffffff;
-    border-radius: 4px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.075);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
     overflow: hidden;
-    border: 1px solid rgba(0,0,0,.125);
-    position: relative;
+    border: 1px solid rgba(0,0,0,.12);
 }
 
 #moodle-ai-chatbox.open {
