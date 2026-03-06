@@ -82,6 +82,13 @@
         </div>
         <div class="ai-chatbox-input-container">
             <textarea class="ai-chatbox-input" id="ai-chatbox-input" placeholder="Add to clipboard..." rows="2"></textarea>
+            <button class="ai-chatbox-quiz-btn" id="ai-quiz-screenshot-btn" title="Screenshot & answer quiz (Alt+Q)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                    <circle cx="12" cy="13" r="4"></circle>
+                    <polyline points="9 10 9 6 15 6 15 10" style="display:none"></polyline>
+                </svg>
+            </button>
             <button class="ai-chatbox-send" id="ai-chatbox-send" title="Send">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="22" y1="2" x2="11" y2="13"></line>
@@ -875,6 +882,56 @@
         }
     }
 
+    // Handle quiz screenshot: capture page, send to AI with quiz prompt
+    async function handleQuizScreenshot() {
+        addMessage('📸 Screenshot sent — answering quiz…', true);
+        addLoadingIndicator();
+
+        try {
+            // Hide the chat UI so it doesn't appear in the screenshot
+            chatbox.style.display = 'none';
+            aiButton.style.display = 'none';
+            // Allow a frame to repaint before capturing
+            await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+            let captured;
+            try {
+                captured = await new Promise((resolve, reject) => {
+                    browser.runtime.sendMessage({ type: 'captureTab' }, (response) => {
+                        if (browser.runtime.lastError) {
+                            reject(new Error(browser.runtime.lastError.message));
+                        } else if (response && response.success) {
+                            resolve(response);
+                        } else {
+                            reject(new Error((response && response.error) || 'Screenshot failed'));
+                        }
+                    });
+                });
+            } finally {
+                // Always restore the UI — clear inline style so the .open CSS class controls display
+                chatbox.style.display = '';
+                aiButton.style.display = '';
+            }
+
+            const quizPrompt = `You are a precise quiz-answering assistant. Your only job is to find and answer the question visible in this screenshot.
+
+RULES — follow them exactly, no exceptions:
+1. Do NOT describe, summarize, or comment on the screenshot.
+2. Scan the screenshot for a question (quiz, test, exercise, form field, etc.).
+3. If NO question is found → respond with exactly: no question found
+4. If a MULTIPLE-CHOICE or SINGLE-CHOICE question is found → respond with ONLY the letter or number of the correct option (e.g. "B" or "3"). No explanation.
+5. If any OTHER type of question is found (fill-in, short answer, calculation, etc.) → respond with the shortest correct answer only. No explanation, no full sentences unless the answer itself is a sentence.
+
+Begin.`;
+            const response = await sendToAI(quizPrompt, captured.base64, captured.mimeType);
+            removeLoadingIndicator();
+            addMessage(response, false);
+        } catch (error) {
+            removeLoadingIndicator();
+            addMessage('Error: ' + error.message, false);
+        }
+    }
+
     // Load saved settings
     async function loadSettings() {
         const { key, provider, model, opencodeUrl, opencodePassword, opacity, btnOpacity, chatWidth, chatHeight } = await getApiKey();
@@ -933,6 +990,19 @@
         }
     });
 
+    // Keyboard shortcut: Alt+Q — screenshot & answer quiz
+    document.addEventListener('keydown', function(e) {
+        if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === 'KeyQ') {
+            const active = document.activeElement;
+            const tag = active && active.tagName.toLowerCase();
+            const insideChatbox = active && chatbox.contains(active);
+            if (!insideChatbox && (tag === 'input' || tag === 'textarea' || tag === 'select'
+                || (active && active.isContentEditable))) return;
+            e.preventDefault();
+            handleQuizScreenshot();
+        }
+    });
+
     chatbox.querySelector('.ai-chatbox-close').addEventListener('click', closeChatbox);
 
     document.getElementById('ai-settings-toggle').addEventListener('click', toggleSettings);
@@ -986,7 +1056,9 @@
     });
     
     document.getElementById('ai-chatbox-send').addEventListener('click', handleSend);
-    
+
+    document.getElementById('ai-quiz-screenshot-btn').addEventListener('click', handleQuizScreenshot);
+
     document.getElementById('ai-chatbox-input').addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -1075,6 +1147,10 @@
 
     // Listen for reset message from popup
     browser.runtime.onMessage.addListener((msg) => {
+        if (msg.type === 'quizScreenshot') {
+            handleQuizScreenshot();
+            return;
+        }
         if (msg.type === 'resetPosition') {
             try { localStorage.removeItem(POS_KEY); } catch(e) {}
             const c = clamp(window.innerWidth - 38, window.innerHeight - 38);

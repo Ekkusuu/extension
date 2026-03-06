@@ -9,6 +9,21 @@ browser.runtime.onInstalled.addListener(function(details) {
     }
 });
 
+// Recreate context menu on every load so title changes take effect immediately
+browser.menus.removeAll().then(function() {
+    browser.menus.create({
+        id: 'quiz-screenshot',
+        title: 'Add to clipboard',
+        contexts: ['all']
+    });
+});
+
+browser.menus.onClicked.addListener(function(info, tab) {
+    if (info.menuItemId === 'quiz-screenshot' && tab && tab.id) {
+        browser.tabs.sendMessage(tab.id, { type: 'quizScreenshot' });
+    }
+});
+
 const OPENCODE_DEFAULT_URL = 'http://127.0.0.1:4096';
 const OPENCODE_SESSION_MAP_KEY = 'opencodeSessionsByPage';
 
@@ -407,6 +422,19 @@ browser.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         getOpenCodeModels(request.opencodeConfig)
             .then(data => {
                 sendResponse({ success: true, models: data.models, defaultModel: data.defaultModel || '' });
+            })
+            .catch(error => {
+                sendResponse({ success: false, error: error.message });
+            });
+        return true;
+    }
+
+    if (request.type === 'captureTab') {
+        browser.tabs.captureVisibleTab(null, { format: 'png' })
+            .then(dataUrl => {
+                // dataUrl is "data:image/png;base64,..." — strip the prefix
+                const base64 = dataUrl.replace(/^data:image\/png;base64,/, '');
+                sendResponse({ success: true, base64, mimeType: 'image/png' });
             })
             .catch(error => {
                 sendResponse({ success: false, error: error.message });
