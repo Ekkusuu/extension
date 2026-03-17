@@ -39,8 +39,16 @@ export function createOverlayController({
       state.isOpen = !state.isOpen;
       chatbox.classList.toggle("open", state.isOpen);
       aiButton.classList.toggle("active", state.isOpen);
-      if (state.isOpen && normalizeViewportState) {
-        normalizeViewportState({ persist: true });
+      if (state.isOpen) {
+        const messagesContainer = chatbox.querySelector(
+          ".ai-messages"
+        ) as HTMLDivElement | null;
+        if (messagesContainer) {
+          messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        if (normalizeViewportState) {
+          normalizeViewportState({ persist: true });
+        }
       }
     },
 

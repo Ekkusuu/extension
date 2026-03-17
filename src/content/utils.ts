@@ -19,20 +19,6 @@ export function queryRequired<T extends Element>(
   return element as T;
 }
 
-export function isEditableTarget(target: Element | null): boolean {
-  if (!target) {
-    return false;
-  }
-
-  const tag = target.tagName.toLowerCase();
-  return (
-    tag === "input" ||
-    tag === "textarea" ||
-    tag === "select" ||
-    (target instanceof HTMLElement && target.isContentEditable)
-  );
-}
-
 export function getInputEventValue(event: Event): string {
   const target = event.target;
   if (!(target instanceof HTMLInputElement)) {

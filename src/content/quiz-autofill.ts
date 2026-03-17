@@ -40,7 +40,7 @@ The page HTML indicates that the visible quiz input type is: ${snapshot.kind}.${
 
 RULES - follow them exactly, no exceptions:
 1. Do NOT describe, summarize, or comment on the screenshot.
-2. Scan the screenshot for a question (quiz, test, exercise, form field, etc.).
+2. Scan the screenshot for questions (quiz, test, exercise, form field, etc.). If multiple questions are visible, focus ONLY on the single question that is most fully visible (least cut off). If multiple questions are equally fully visible, choose the one that appears highest (topmost) in the screenshot.
 3. If NO question is found -> respond with exactly: no question found
 4. If the quiz type is single_choice -> respond with ONLY one positive integer representing the correct option position in top-to-bottom order (example: 3). No explanation.
 5. If the quiz type is multiple_choice -> respond with ONLY the correct option numbers, one number per line, in top-to-bottom order. No explanation.
