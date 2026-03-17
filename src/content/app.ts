@@ -26,6 +26,7 @@ import type { PendingRequest } from "./types";
 
 const POSITION_STORAGE_KEY = "ai_btn_pos";
 const CHAT_HISTORY_STORAGE_KEY = "aiGlobalChatHistory";
+const CHAT_OPEN_STORAGE_KEY = "ai_chat_open";
 const SESSION_SCOPE_KEY = "global";
 
 export async function startContentApp(): Promise<void> {
@@ -149,8 +150,14 @@ export async function startContentApp(): Promise<void> {
     state,
     posKey: POSITION_STORAGE_KEY,
     chat: {
-      toggle: overlay.toggleChatbox,
-      close: overlay.closeChatbox,
+      toggle: () => {
+        overlay.toggleChatbox();
+        persistChatOpen(state.isOpen);
+      },
+      close: () => {
+        overlay.closeChatbox();
+        persistChatOpen(false);
+      },
       send: chatController.send,
       reset: chatController.reset,
       runQuizScreenshot: quiz.runScreenshotQuiz,
@@ -176,8 +183,31 @@ export async function startContentApp(): Promise<void> {
     }
   });
 
+  function persistChatOpen(isOpen: boolean): void {
+    void browser.storage.local.set({ [CHAT_OPEN_STORAGE_KEY]: isOpen });
+  }
+
+  browser.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName !== "local" || !(CHAT_OPEN_STORAGE_KEY in changes)) {
+      return;
+    }
+
+    const newValue = changes[CHAT_OPEN_STORAGE_KEY].newValue;
+    if (typeof newValue === "boolean" && newValue !== state.isOpen) {
+      overlay.toggleChatbox();
+    }
+  });
+
   settings.measurePanelHeight();
   theme.updateDarkMode();
   await messages.loadHistory();
+
+  const chatOpenResult = (await browser.storage.local.get(
+    CHAT_OPEN_STORAGE_KEY
+  )) as Record<string, unknown>;
+  if (chatOpenResult[CHAT_OPEN_STORAGE_KEY] === true) {
+    overlay.toggleChatbox();
+  }
+
   await Promise.all([settings.load(), loadKaTeX()]);
 }
