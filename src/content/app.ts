@@ -187,7 +187,10 @@ export async function startContentApp(): Promise<void> {
     void browser.storage.local.set({ [CHAT_OPEN_STORAGE_KEY]: isOpen });
   }
 
-  browser.storage.onChanged.addListener((changes, areaName) => {
+  function onChatOpenStorageChanged(
+    changes: Record<string, browser.storage.StorageChange>,
+    areaName: string
+  ): void {
     if (areaName !== "local" || !(CHAT_OPEN_STORAGE_KEY in changes)) {
       return;
     }
@@ -196,11 +199,14 @@ export async function startContentApp(): Promise<void> {
     if (typeof newValue === "boolean" && newValue !== state.isOpen) {
       overlay.toggleChatbox();
     }
-  });
+  }
+
+  browser.storage.onChanged.addListener(onChatOpenStorageChanged);
 
   settings.measurePanelHeight();
   theme.updateDarkMode();
   await messages.loadHistory();
+  await Promise.all([settings.load(), loadKaTeX()]);
 
   const chatOpenResult = (await browser.storage.local.get(
     CHAT_OPEN_STORAGE_KEY
@@ -208,6 +214,4 @@ export async function startContentApp(): Promise<void> {
   if (chatOpenResult[CHAT_OPEN_STORAGE_KEY] === true) {
     overlay.toggleChatbox();
   }
-
-  await Promise.all([settings.load(), loadKaTeX()]);
 }
