@@ -1,5 +1,5 @@
-import type { CaptureTabResponse, OverlayElements } from "./types";
-import type { MessageController } from "./messages";
+import type { QuizControllerOptions } from "./quiz-shared";
+import { runQuizRequest } from "./quiz-shared";
 
 const QUIZ_PROMPT = `You are a precise quiz-answering assistant. Your only job is to find and answer the question visible in this screenshot.
 
@@ -12,72 +12,13 @@ RULES - follow them exactly, no exceptions:
 
 Begin.`;
 
-interface QuizControllerOptions {
-  elements: OverlayElements;
-  messages: MessageController;
-  beforeSend: () => Promise<{
-    providerLabel: string;
-    modelLabel: string;
-    badgeLabel: string;
-    signature: string;
-  }>;
-  sendToAI: (
-    text: string,
-    imageBase64?: string | null,
-    imageMimeType?: string | null
-  ) => Promise<string>;
-  captureTab: () => Promise<CaptureTabResponse>;
-}
-
-export function createQuizController({
-  elements,
-  messages,
-  beforeSend,
-  sendToAI,
-  captureTab
-}: QuizControllerOptions) {
-  const { aiButton, chatbox } = elements;
-
+export function createQuizController(options: QuizControllerOptions) {
   return {
     async runScreenshotQuiz(): Promise<void> {
-      const context = await beforeSend();
-      messages.ensureProviderContext(context);
-      messages.addUserMessage("📸 Screenshot sent — answering quiz…");
-      messages.showLoading();
-
-      try {
-        chatbox.style.display = "none";
-        aiButton.style.display = "none";
-        await new Promise<void>((resolve) =>
-          requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
-        );
-
-        let captured: CaptureTabResponse;
-        try {
-          captured = await captureTab();
-        } finally {
-          chatbox.style.display = "";
-          aiButton.style.display = "";
-        }
-
-        if (!captured.success || !captured.base64 || !captured.mimeType) {
-          throw new Error(captured.error || "Screenshot failed");
-        }
-
-        const response = await sendToAI(
-          QUIZ_PROMPT,
-          captured.base64,
-          captured.mimeType
-        );
-        messages.hideLoading();
-        messages.addBotMessage(response, {
-          providerLabel: context.providerLabel,
-          modelLabel: context.badgeLabel
-        });
-      } catch (error) {
-        messages.hideLoading();
-        messages.showError(error);
-      }
+      await runQuizRequest(options, {
+        userMessage: "📸 Screenshot sent — answering quiz…",
+        buildPrompt: () => ({ prompt: QUIZ_PROMPT })
+      });
     }
   };
 }

@@ -5,6 +5,7 @@ import { createImageController } from "./images";
 import { createLayoutController } from "./layout";
 import { loadKaTeX } from "./markdown";
 import { createMessageController } from "./messages";
+import { createQuizAutofillController } from "./quiz-autofill-controller";
 import { createQuizController } from "./quiz";
 import { sendToAI as sendAIRequest } from "./requests";
 import {
@@ -109,6 +110,13 @@ export async function startContentApp(): Promise<void> {
     sendToAI,
     captureTab: () => browser.runtime.sendMessage({ type: "captureTab" })
   });
+  const quizAutofill = createQuizAutofillController({
+    elements,
+    messages,
+    beforeSend,
+    sendToAI,
+    captureTab: () => browser.runtime.sendMessage({ type: "captureTab" })
+  });
 
   layout.loadBtnPos((initialPosition) => {
     layout.normalizeViewportState({
@@ -145,7 +153,8 @@ export async function startContentApp(): Promise<void> {
       close: overlay.closeChatbox,
       send: chatController.send,
       reset: chatController.reset,
-      runQuizScreenshot: quiz.runScreenshotQuiz
+      runQuizScreenshot: quiz.runScreenshotQuiz,
+      runQuizAutofill: quizAutofill.runQuizAutofill
     },
     settings: {
       toggle: overlay.toggleSettings,
