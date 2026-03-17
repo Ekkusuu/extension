@@ -1,5 +1,4 @@
 import type { EventBindingsOptions } from "./types";
-import { isEditableTarget } from "../utils";
 
 export function bindRuntimeEvents({
   elements,
@@ -41,11 +40,6 @@ export function bindRuntimeEvents({
       return;
     }
 
-    const active = document.activeElement;
-    if (!chatbox.contains(active) && isEditableTarget(active)) {
-      return;
-    }
-
     event.preventDefault();
     chat.toggle();
   });
@@ -61,11 +55,6 @@ export function bindRuntimeEvents({
       return;
     }
 
-    const active = document.activeElement;
-    if (!chatbox.contains(active) && isEditableTarget(active)) {
-      return;
-    }
-
     event.preventDefault();
     void chat.runQuizScreenshot();
   });
@@ -78,11 +67,6 @@ export function bindRuntimeEvents({
       event.metaKey ||
       event.code !== "KeyQ"
     ) {
-      return;
-    }
-
-    const active = document.activeElement;
-    if (!chatbox.contains(active) && isEditableTarget(active)) {
       return;
     }
 
