@@ -201,8 +201,6 @@ export async function startContentApp(): Promise<void> {
     }
   }
 
-  browser.storage.onChanged.addListener(onChatOpenStorageChanged);
-
   settings.measurePanelHeight();
   theme.updateDarkMode();
   await messages.loadHistory();
@@ -214,4 +212,6 @@ export async function startContentApp(): Promise<void> {
   if (chatOpenResult[CHAT_OPEN_STORAGE_KEY] === true) {
     overlay.toggleChatbox();
   }
+
+  browser.storage.onChanged.addListener(onChatOpenStorageChanged);
 }
