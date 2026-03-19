@@ -57,6 +57,10 @@ export async function startContentApp(): Promise<void> {
   }
 
   async function beforeSend() {
+    const settings = await getApiKey();
+    if (!settings.keepContext) {
+      await messages.clear();
+    }
     updateComposerMetaUI();
     return getSelectedProviderInfo();
   }
