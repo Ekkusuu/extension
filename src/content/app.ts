@@ -50,6 +50,7 @@ export async function startContentApp(): Promise<void> {
       imageBase64,
       imageMimeType,
       settings,
+      contextMessages: messages.getContextMessages(),
       getPageSessionKey: () => SESSION_SCOPE_KEY,
       pendingRequests
     });
