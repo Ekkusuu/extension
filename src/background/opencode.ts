@@ -328,10 +328,6 @@ export async function callOpenCode(
     await clearOpenCodeSessionId(scopedPageKey);
     sessionId = await ensureOpenCodeSession(baseUrl, password, scopedPageKey);
 
-    if (!keepContext) {
-      await pruneOpenCodeSession(baseUrl, password, sessionId);
-    }
-
     data = await openCodeFetch(
       baseUrl,
       password,

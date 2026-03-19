@@ -40,12 +40,12 @@ export function createOverlay() {
                 <option value="grok">Grok (xAI)</option>
                 <option value="opencode">OpenCode (local)</option>
             </select>
-             <label for="ai-model-select" class="mt">Model</label>
-             <select id="ai-model-select"></select>
-             <div id="ai-api-key-group">
-                 <label for="ai-sync-key" class="mt">API Key</label>
-                 <input type="password" id="ai-sync-key" placeholder="Enter API key...">
-                 <small class="hint" id="ai-api-key-hint">Key for the selected AI provider</small>
+            <label for="ai-model-select" class="mt">Model</label>
+            <select id="ai-model-select"></select>
+            <div id="ai-api-key-group">
+                <label for="ai-sync-key" class="mt">API Key</label>
+                <input type="password" id="ai-sync-key" placeholder="Enter API key...">
+                <small class="hint" id="ai-api-key-hint">Key for the selected AI provider</small>
             </div>
             <div id="ai-opencode-group" class="hidden">
                 <label for="ai-opencode-url" class="mt">OpenCode Server URL</label>
